@@ -4,15 +4,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.automirrored.outlined.ListAlt
@@ -20,6 +28,8 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -31,6 +41,7 @@ import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,12 +52,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -59,6 +72,7 @@ import com.example.auth.signOut
 import com.example.data.firebase.MahadevRepository
 import com.example.data.firebase.SessionPreferences
 import com.example.data.model.UiState
+import com.example.ui.components.MahadevLogoBadge
 import com.example.ui.screens.AdminTabRoot
 import com.example.ui.screens.CustomerMobileLoginScreen
 import com.example.ui.screens.GoogleAuthScreen
@@ -69,8 +83,10 @@ import com.example.ui.screens.SplashScreen
 import com.example.ui.theme.CrimsonContainer
 import com.example.ui.theme.CrimsonPrimary
 import com.example.ui.theme.MahadevTradersTheme
+import com.example.ui.theme.ParchmentSurface
 import com.example.ui.viewmodel.MahadevViewModel
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.delay
@@ -117,6 +133,21 @@ fun AppRoot() {
     return
   }
 
+  val context = LocalContext.current
+  val isFirebaseReady =
+    remember(context) {
+      try {
+        FirebaseApp.getApps(context).isNotEmpty() || FirebaseApp.initializeApp(context) != null
+      } catch (_: Throwable) {
+        false
+      }
+    }
+
+  if (!isFirebaseReady) {
+    FirebaseSetupMissingScreen()
+    return
+  }
+
   val auth = Firebase.auth
   val currentUser by auth.authStateFlow().collectAsStateWithLifecycle(initialValue = auth.currentUser)
   val user = currentUser
@@ -126,6 +157,73 @@ fun AppRoot() {
   } else {
     key(user.uid) {
       AuthenticatedAppShell(currentUserId = user.uid)
+    }
+  }
+}
+
+@Composable
+private fun FirebaseSetupMissingScreen() {
+  Box(
+    modifier =
+      Modifier.fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)
+        .safeDrawingPadding(),
+    contentAlignment = Alignment.Center,
+  ) {
+    Column(
+      modifier =
+        Modifier.fillMaxWidth()
+          .widthIn(max = 520.dp)
+          .verticalScroll(rememberScrollState())
+          .padding(24.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      MahadevLogoBadge(size = 110.dp)
+      Spacer(modifier = Modifier.height(16.dp))
+      Text(
+        text = "મહાદેવ ટ્રેડર્સ",
+        style = MaterialTheme.typography.headlineMedium,
+        color = CrimsonPrimary,
+        textAlign = TextAlign.Center,
+      )
+      Spacer(modifier = Modifier.height(16.dp))
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+      ) {
+        Column(
+          modifier = Modifier.padding(20.dp),
+          verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+          Text(
+            text = "Firebase રૂપરેખાંકન ખૂટે છે",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = CrimsonPrimary,
+          )
+          Text(
+            text =
+              "આ APK બિલ્ડ કરતી વખતે app/google-services.json ફાઇલ સામેલ ન હતી, તેથી લાઈવ ડેટાબેઝ શરૂ થઈ શક્યો નથી.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+          )
+          Surface(
+            color = ParchmentSurface,
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Text(
+              text =
+                "ઉકેલ: તમારા GitHub repository માં app/google-services.json ફાઇલ (અથવા Secret: GOOGLE_SERVICES_JSON) ઉમેરીને ફરીથી APK બિલ્ડ કરો.",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.padding(12.dp),
+            )
+          }
+        }
+      }
     }
   }
 }

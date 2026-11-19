@@ -10,12 +10,10 @@ import com.example.R
 
 val MahadevDisplayFontFamily = FontFamily(
   Font(R.font.noto_sans_gujarati, FontWeight.Bold),
-  Font(R.font.plus_jakarta_sans, FontWeight.Bold),
 )
 
 val MahadevBodyFontFamily = FontFamily(
   Font(R.font.noto_sans_gujarati, FontWeight.Normal),
-  Font(R.font.plus_jakarta_sans, FontWeight.Normal),
 )
 
 val Typography =
