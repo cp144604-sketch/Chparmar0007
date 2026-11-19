@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.VerifiedUser
@@ -54,8 +55,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import com.example.auth.attemptAutoSignIn
+import com.example.auth.getAppSigningSha1
 import com.example.auth.onGoogleSignInClicked
 import com.example.ui.components.MahadevLogoBadge
 import com.example.ui.theme.CrimsonDeep
@@ -137,10 +141,13 @@ fun SplashScreen() {
 @Composable
 fun GoogleAuthScreen(onAuthSuccess: () -> Unit) {
   val context = LocalContext.current
+  val clipboard = LocalClipboardManager.current
   val scope = rememberCoroutineScope()
   val credentialManager = remember(context) { CredentialManager.create(context) }
   var isLoading by remember { mutableStateOf(false) }
   var errorMessage by remember { mutableStateOf<String?>(null) }
+  var copiedSha1 by remember { mutableStateOf(false) }
+  val appSha1 = remember(context) { getAppSigningSha1(context) }
 
   LaunchedEffect(Unit) {
     attemptAutoSignIn(
@@ -243,12 +250,36 @@ fun GoogleAuthScreen(onAuthSuccess: () -> Unit) {
               shape = MaterialTheme.shapes.small,
               modifier = Modifier.fillMaxWidth(),
             ) {
-              Text(
-                text = errorMessage!!,
-                style = MaterialTheme.typography.bodySmall,
-                color = CrimsonDeep,
-                modifier = Modifier.padding(12.dp),
-              )
+              Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                  text = errorMessage!!,
+                  style = MaterialTheme.typography.bodySmall,
+                  color = CrimsonDeep,
+                )
+                if (!appSha1.isNullOrBlank()) {
+                  Spacer(modifier = Modifier.height(6.dp))
+                  TextButton(
+                    onClick = {
+                      clipboard.setText(AnnotatedString(appSha1))
+                      copiedSha1 = true
+                    },
+                    modifier = Modifier.testTag("copy_sha1_button"),
+                  ) {
+                    Icon(
+                      imageVector = Icons.Filled.ContentCopy,
+                      contentDescription = null,
+                      tint = CrimsonPrimary,
+                      modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                      text = if (copiedSha1) "SHA-1 કોપી થઈ ગયો ✓" else "SHA-1 કોપી કરો",
+                      color = CrimsonPrimary,
+                      fontWeight = FontWeight.Bold,
+                    )
+                  }
+                }
+              }
             }
           }
 

@@ -79,6 +79,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          SHA1=$(keytool -list -v -keystore debug.keystore -storepass android | grep -m1 "SHA1:" | sed 's/.*SHA1:[[:space:]]*//')
+          SHA256=$(keytool -list -v -keystore debug.keystore -storepass android | grep -m1 "SHA256:" | sed 's/.*SHA256:[[:space:]]*//')
           TAG="latest-apk"
           gh release delete "$TAG" --yes >/dev/null 2>&1 || true
           git config user.name "github-actions[bot]"
@@ -87,5 +89,9 @@ jobs:
           git push -f origin "$TAG"
           gh release create "$TAG" MahadevTraders.apk \
             --title "Mahadev Traders App (Latest APK)" \
-            --notes "મહાદેવ ટ્રેડર્સ Android APK ડાઉનલોડ કરવા માટે નીચે આપેલ MahadevTraders.apk પર ક્લિક કરો." \
+            --notes "મહાદેવ ટ્રેડર્સ Android APK ડાઉનલોડ કરવા માટે નીચે આપેલ MahadevTraders.apk પર ક્લિક કરો.
+
+          APK Signing Fingerprints (જો Google Sign-In માટે Firebase Console માં ઉમેરવું પડે):
+          SHA-1: $SHA1
+          SHA-256: $SHA256" \
             --latest

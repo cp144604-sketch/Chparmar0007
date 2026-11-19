@@ -148,12 +148,13 @@ fun AppRoot() {
     return
   }
 
+  var authVersion by remember { mutableStateOf(0) }
   val auth = Firebase.auth
   val currentUser by auth.authStateFlow().collectAsStateWithLifecycle(initialValue = auth.currentUser)
-  val user = currentUser
+  val user = remember(currentUser, authVersion) { currentUser ?: auth.currentUser }
 
   if (user == null) {
-    GoogleAuthScreen(onAuthSuccess = {})
+    GoogleAuthScreen(onAuthSuccess = { authVersion++ })
   } else {
     key(user.uid) {
       AuthenticatedAppShell(currentUserId = user.uid)
