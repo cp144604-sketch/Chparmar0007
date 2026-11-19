@@ -1,0 +1,273 @@
+{
+  "entities": {
+    "Grain": {
+      "title": "Grain",
+      "description": "A grain or grocery product sold by Mahadev Traders with real-time price, weight, and stock status.",
+      "type": "object",
+      "properties": {
+        "catalogId": {
+          "type": "string",
+          "description": "Fixed store catalog identifier ('mahadev_traders')."
+        },
+        "name": {
+          "type": "string",
+          "description": "Product name in Gujarati (e.g. ઘઉં, ચોખા)."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category label (e.g. અનાજ, દાળ, કઠોળ, કરીયાણું)."
+        },
+        "iconKey": {
+          "type": "string",
+          "description": "Visual fallback icon key (e.g. wheat, rice, bajri, jowar, chana, toor_dal, moong, maize, grocery)."
+        },
+        "pricePerKg": {
+          "type": "number",
+          "description": "Price in INR per Kg."
+        },
+        "weightLabel": {
+          "type": "string",
+          "description": "Pack/bag weight description (e.g. 50 Kg (બેગ))."
+        },
+        "stockStatus": {
+          "type": "string",
+          "enum": ["ઉપલબ્ધ", "ઓછો સ્ટોક", "સ્ટોક બંધ"],
+          "description": "Stock availability status."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional quality or wholesale notes."
+        },
+        "imageBase64": {
+          "type": "string",
+          "description": "Optional compressed JPEG Base64 product thumbnail."
+        },
+        "updatedByMobile": {
+          "type": "string",
+          "description": "Mobile number of admin who last updated the grain."
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "UID of admin who created this grain."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp on creation (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp on last update (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "catalogId",
+        "name",
+        "category",
+        "iconKey",
+        "pricePerKg",
+        "weightLabel",
+        "stockStatus",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CustomerSession": {
+      "title": "CustomerSession",
+      "description": "Tracks customer mobile number logins for admin visibility.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the signed-in user."
+        },
+        "mobileNumber": {
+          "type": "string",
+          "description": "Customer 10-digit mobile number."
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Customer display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "Optional Google account email."
+        },
+        "roleLabel": {
+          "type": "string",
+          "enum": ["customer", "admin"],
+          "description": "Session role."
+        },
+        "loginCount": {
+          "type": "integer",
+          "description": "Total number of logins recorded for this mobile session."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of first login (FieldValue.serverTimestamp())."
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of most recent login (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "mobileNumber",
+        "customerName",
+        "roleLabel",
+        "loginCount",
+        "createdAt",
+        "lastLoginAt"
+      ]
+    },
+    "MyListItem": {
+      "title": "MyListItem",
+      "description": "A customer's saved grain item in their personal My List.",
+      "type": "object",
+      "properties": {
+        "grainId": {
+          "type": "string",
+          "description": "Referenced grain document ID."
+        },
+        "grainName": {
+          "type": "string",
+          "description": "Grain name snapshot."
+        },
+        "pricePerKg": {
+          "type": "number",
+          "description": "Last seen price per Kg."
+        },
+        "weightLabel": {
+          "type": "string",
+          "description": "Weight label snapshot."
+        },
+        "quantityNote": {
+          "type": "string",
+          "description": "Optional customer quantity note."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp on creation (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp on update (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "grainId",
+        "grainName",
+        "pricePerKg",
+        "weightLabel",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminSession": {
+      "title": "AdminSession",
+      "description": "Verified admin privilege document linked to authenticated UID.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID."
+        },
+        "adminMobile": {
+          "type": "string",
+          "enum": ["9879730448", "9727630403"],
+          "description": "Authorized admin mobile number."
+        },
+        "passcode": {
+          "type": "string",
+          "description": "Verified admin passcode."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Admin display label."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp on creation (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp on update (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "adminMobile",
+        "passcode",
+        "displayName",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AppDownloadConfig": {
+      "title": "AppDownloadConfig",
+      "description": "App download link and QR code title configured by Admin.",
+      "type": "object",
+      "properties": {
+        "downloadUrl": {
+          "type": "string",
+          "description": "HTTPS/HTTP URL for app APK or Play Store download."
+        },
+        "titleGu": {
+          "type": "string",
+          "description": "Display caption shown under the QR code."
+        },
+        "updatedByMobile": {
+          "type": "string",
+          "description": "Admin mobile number that saved the link."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp on creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp on update."
+        }
+      },
+      "required": [
+        "downloadUrl",
+        "titleGu",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/grains/{grainId}": {
+      "schema": { "$ref": "#/entities/Grain" },
+      "description": "Store grain and grocery price catalog."
+    },
+    "/customer_sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/CustomerSession" },
+      "description": "Customer mobile login logs visible to admins."
+    },
+    "/users/{userId}/my_list/{grainId}": {
+      "schema": { "$ref": "#/entities/MyListItem" },
+      "description": "Personal saved grain list for a signed-in customer."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminSession" },
+      "description": "Verified admin sessions."
+    },
+    "/app_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/AppDownloadConfig" },
+      "description": "App download link configuration for customer QR code sharing."
+    }
+  }
+}

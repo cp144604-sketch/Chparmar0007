@@ -1,0 +1,247 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Reusable Hardened Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() &&
+             request.auth.token.email == 'chparmar0007@gmail.com' &&
+             request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        isBootstrappedAdmin() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // 3. Entity Validation Helpers
+    function isValidGrain(data) {
+      return data.catalogId is string && data.catalogId == 'mahadev_traders' &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+             data.iconKey is string && data.iconKey.size() >= 1 && data.iconKey.size() <= 30 &&
+             data.pricePerKg is number && data.pricePerKg >= 0 && data.pricePerKg <= 100000 &&
+             data.weightLabel is string && data.weightLabel.size() >= 1 && data.weightLabel.size() <= 50 &&
+             data.stockStatus is string && data.stockStatus in ['ઉપલબ્ધ', 'ઓછો સ્ટોક', 'સ્ટોક બંધ'] &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 300)) &&
+             (!('imageBase64' in data) || (data.imageBase64 is string && data.imageBase64.size() <= 120000)) &&
+             (!('updatedByMobile' in data) || (data.updatedByMobile is string && data.updatedByMobile.size() <= 20)) &&
+             data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128;
+    }
+
+    function isValidCustomerSession(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.mobileNumber is string && data.mobileNumber.size() >= 10 && data.mobileNumber.size() <= 15 && data.mobileNumber.matches('^[0-9]+$') &&
+             data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 60 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 100)) &&
+             data.roleLabel is string && data.roleLabel in ['customer', 'admin'] &&
+             data.loginCount is int && data.loginCount >= 1 && data.loginCount <= 1000000;
+    }
+
+    function isValidMyListItem(data) {
+      return data.grainId is string && data.grainId.size() >= 1 && data.grainId.size() <= 128 &&
+             data.grainName is string && data.grainName.size() >= 1 && data.grainName.size() <= 80 &&
+             data.pricePerKg is number && data.pricePerKg >= 0 && data.pricePerKg <= 100000 &&
+             data.weightLabel is string && data.weightLabel.size() >= 1 && data.weightLabel.size() <= 50 &&
+             (!('quantityNote' in data) || (data.quantityNote is string && data.quantityNote.size() <= 60));
+    }
+
+    function isValidAdminDoc(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.adminMobile is string && data.adminMobile in ['9879730448', '9727630403'] &&
+             data.passcode is string && data.passcode == 'mahadav@2001' &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 40;
+    }
+
+    function isValidAppDownloadConfig(data) {
+      return data.downloadUrl is string && data.downloadUrl.size() >= 8 && data.downloadUrl.size() <= 500 &&
+             data.downloadUrl.matches('^https?://.+') &&
+             data.titleGu is string && data.titleGu.size() >= 1 && data.titleGu.size() <= 80 &&
+             (!('updatedByMobile' in data) || (data.updatedByMobile is string && data.updatedByMobile.size() <= 20));
+    }
+
+    // 4. Collection Rules
+    match /grains/{grainId} {
+      allow get: if isSignedIn() && isValidId(grainId);
+      allow list: if isSignedIn() && (existing().catalogId == 'mahadev_traders' || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(grainId) &&
+                       isValidGrain(incoming()) &&
+                       incoming().createdBy == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'catalogId', 'name', 'category', 'iconKey', 'pricePerKg',
+                         'weightLabel', 'stockStatus', 'createdBy', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'catalogId', 'name', 'category', 'iconKey', 'pricePerKg',
+                         'weightLabel', 'stockStatus', 'notes', 'imageBase64',
+                         'updatedByMobile', 'createdBy', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isAdmin();
+
+      allow update: if isSignedIn() &&
+                       isValidId(grainId) &&
+                       isValidGrain(incoming()) &&
+                       incoming().catalogId == existing().catalogId &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isAdmin() &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'name', 'category', 'iconKey', 'pricePerKg', 'weightLabel',
+                         'stockStatus', 'notes', 'imageBase64', 'updatedByMobile', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(grainId) && isAdmin();
+    }
+
+    match /customer_sessions/{sessionId} {
+      allow get: if isSignedIn() && isValidId(sessionId) &&
+                    (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() &&
+                     (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(sessionId) &&
+                       isValidCustomerSession(incoming()) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'userId', 'mobileNumber', 'customerName', 'roleLabel',
+                         'loginCount', 'createdAt', 'lastLoginAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'mobileNumber', 'customerName', 'email',
+                         'roleLabel', 'loginCount', 'createdAt', 'lastLoginAt'
+                       ]) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().lastLoginAt is timestamp && incoming().lastLoginAt <= request.time;
+
+      allow update: if isSignedIn() &&
+                       isValidId(sessionId) &&
+                       isValidCustomerSession(incoming()) &&
+                       (existing().userId == request.auth.uid || isAdmin()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().mobileNumber == existing().mobileNumber &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().lastLoginAt is timestamp && incoming().lastLoginAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'customerName', 'email', 'roleLabel', 'loginCount', 'lastLoginAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(sessionId) && isAdmin();
+    }
+
+    match /users/{userId}/my_list/{grainId} {
+      allow get: if isSignedIn() && isValidId(grainId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       isValidId(grainId) &&
+                       request.auth.uid == userId &&
+                       isValidMyListItem(incoming()) &&
+                       incoming().keys().hasAll([
+                         'grainId', 'grainName', 'pricePerKg', 'weightLabel', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'grainId', 'grainName', 'pricePerKg', 'weightLabel',
+                         'quantityNote', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
+
+      allow update: if isSignedIn() &&
+                       isValidId(grainId) &&
+                       request.auth.uid == userId &&
+                       isValidMyListItem(incoming()) &&
+                       incoming().grainId == existing().grainId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'grainName', 'pricePerKg', 'weightLabel', 'quantityNote', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(grainId) && request.auth.uid == userId;
+    }
+
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && request.auth.uid == adminUid;
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       isValidId(adminUid) &&
+                       request.auth.uid == adminUid &&
+                       isValidAdminDoc(incoming()) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'userId', 'adminMobile', 'passcode', 'displayName', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'adminMobile', 'passcode', 'displayName', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
+
+      allow update: if isSignedIn() &&
+                       isValidId(adminUid) &&
+                       request.auth.uid == adminUid &&
+                       isValidAdminDoc(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'adminMobile', 'passcode', 'displayName', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(adminUid) && request.auth.uid == adminUid;
+    }
+
+    match /app_settings/{settingId} {
+      allow get: if isSignedIn() && settingId == 'download_config';
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       settingId == 'download_config' &&
+                       isAdmin() &&
+                       isValidAppDownloadConfig(incoming()) &&
+                       incoming().keys().hasAll(['downloadUrl', 'titleGu', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['downloadUrl', 'titleGu', 'updatedByMobile', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
+
+      allow update: if isSignedIn() &&
+                       settingId == 'download_config' &&
+                       isAdmin() &&
+                       isValidAppDownloadConfig(incoming()) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['downloadUrl', 'titleGu', 'updatedByMobile', 'updatedAt']);
+
+      allow delete: if false;
+    }
+  }
+}

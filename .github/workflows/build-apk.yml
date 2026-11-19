@@ -1,0 +1,67 @@
+name: Build Mahadev Traders APK
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Accept Android SDK licenses
+        run: |
+          if [ -n "$ANDROID_HOME" ] && [ -d "$ANDROID_HOME/cmdline-tools/latest/bin" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          fi
+
+      - name: Restore debug keystore
+        run: base64 -d debug.keystore.base64 > debug.keystore
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Build Debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Rename APK for download
+        run: cp app/build/outputs/apk/debug/app-debug.apk MahadevTraders.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MahadevTraders-APK
+          path: MahadevTraders.apk
+          retention-days: 90
+
+      - name: Publish Direct Download Release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="latest-apk"
+          gh release delete "$TAG" --yes >/dev/null 2>&1 || true
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "$TAG"
+          git push -f origin "$TAG"
+          gh release create "$TAG" MahadevTraders.apk \
+            --title "Mahadev Traders App (Latest APK)" \
+            --notes "મહાદેવ ટ્રેડર્સ Android APK ડાઉનલોડ કરવા માટે નીચે આપેલ MahadevTraders.apk પર ક્લિક કરો." \
+            --latest
